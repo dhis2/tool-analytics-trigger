@@ -50,6 +50,8 @@ pip install -r requirements.txt
 - `INCREMENTAL_PARAMS`: skips resource tables, `lastYears=1`
 - `FULL_PARAMS`: includes resource tables, no `lastYears` limit
 
+Mode params can be overridden per-mode in the config under a `modes` key; config values are merged over the hardcoded defaults (config wins, unspecified keys retain defaults, JSON booleans coerced to lowercase strings).
+
 **Task polling** (`poll_task_logs()`): polls the `relativeNotifierEndpoint` returned in the trigger response. Deduplicates events by `uid`. Starts a grace window (`grace_seconds_after_complete`, default 10s) once a `completed:true` event is seen, then classifies outcome:
 - **Success**: any `completed:true` INFO event whose message contains `"analytics tables updated"` (case-insensitive)
 - **Failure**: latest `completed` event is ERROR/FATAL, or fallback to any ERROR/FATAL event anywhere
