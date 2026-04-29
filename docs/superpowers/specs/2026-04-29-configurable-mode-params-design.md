@@ -41,7 +41,10 @@ Add an optional `modes` block to the JSON config. Each key is a mode name (`cont
    modes_raw = raw.get("modes", {})
    modes = {}
    for name, defaults in _defaults.items():
-       overrides = {k: str(v) for k, v in modes_raw.get(name, {}).items()}
+       overrides = {
+           k: str(v).lower() if isinstance(v, bool) else str(v)
+           for k, v in modes_raw.get(name, {}).items()
+       }
        modes[name] = {**defaults, **overrides}
    ```
 
