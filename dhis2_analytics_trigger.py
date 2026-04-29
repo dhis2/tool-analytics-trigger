@@ -330,7 +330,8 @@ def trigger_and_watch(
     username: Optional[str] = None,
     password: Optional[str] = None,
 ) -> int:
-    resp = post_analytics(session, app_cfg.dhis, mode, username=username, password=password)
+    params = app_cfg.modes[mode]
+    resp = post_analytics(session, app_cfg.dhis, mode, params, username=username, password=password)
 
     try:
         body = resp.json()
@@ -464,7 +465,8 @@ def main() -> int:
     t0 = time.time()
     try:
         if args.no_watch:
-            resp = post_analytics(session, cfg.dhis, args.mode, username=username, password=password)
+            params = cfg.modes[args.mode]
+            resp = post_analytics(session, cfg.dhis, args.mode, params, username=username, password=password)
             ok = 200 <= resp.status_code < 300
             logging.info("Triggered %s (watch disabled) status=%s", args.mode, resp.status_code)
             return 0 if ok else 1
