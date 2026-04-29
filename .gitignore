@@ -1,0 +1,13 @@
+# Local config (may contain credentials)
+dish.conf
+*.conf
+*.json
+!config.json.sample
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# IDE
+.idea/
