@@ -37,7 +37,7 @@ import logging
 import os
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 import requests
@@ -72,6 +72,7 @@ class AlertingConfig:
 class AppConfig:
     dhis: DHISConfig
     alerting: AlertingConfig
+    modes: Dict[str, Dict[str, str]] = field(default_factory=dict)
 
 
 # Continuous analytics: only processes recently changed data (lastYears=0).
@@ -118,9 +119,21 @@ def load_config(path: str) -> AppConfig:
         only_on_failure=bool(alert_raw.get("only_on_failure", True)),
     )
 
+    _defaults = {
+        "continuous": CONTINUOUS_PARAMS,
+        "incremental": INCREMENTAL_PARAMS,
+        "full": FULL_PARAMS,
+    }
+    modes_raw = raw.get("modes", {})
+    modes: Dict[str, Dict[str, str]] = {}
+    for name, defaults in _defaults.items():
+        overrides = {
+            k: str(v).lower() if isinstance(v, bool) else str(v)
+            for k, v in modes_raw.get(name, {}).items()
+        }
+        modes[name] = {**defaults, **overrides}
 
-
-    return AppConfig(dhis=dhis_cfg, alerting=alert_cfg)
+    return AppConfig(dhis=dhis_cfg, alerting=alert_cfg, modes=modes)
 
 
 def make_session(retries: int = 3, backoff_factor: float = 0.5) -> requests.Session:
