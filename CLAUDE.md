@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A Python CLI utility that triggers DHIS2 analytics runs via the REST API, polls for completion, and sends alerts (Telegram and/or generic webhook). Designed for cron-based scheduling on servers where the built-in DHIS2 scheduler is unreliable.
+A Python CLI utility that triggers DHIS2 analytics runs via the REST API, polls for completion, and sends alerts (Telegram and/or generic webhook). Primary use case is **continuous analytics** (`lastYears=0`) on high-volume tracker-only systems where full analytics runs are too slow — process only recently changed data on a 2-hour schedule, with a full rebuild once a week.
 
 ## Running the script
 
@@ -13,19 +13,19 @@ A Python CLI utility that triggers DHIS2 analytics runs via the REST API, polls 
 source .venv/bin/activate
 
 # Dry run (no actual requests)
-python dhis2_analytics_trigger.py --mode incremental --config dish.conf --dry-run
+python dhis2_analytics_trigger.py --mode continuous --config dish.conf --dry-run
 
-# Run incremental analytics
-python dhis2_analytics_trigger.py --mode incremental --config dish.conf
+# Continuous analytics (recently changed data only, tracker-only systems)
+python dhis2_analytics_trigger.py --mode continuous --config dish.conf
 
-# Run full analytics
+# Full analytics run
 python dhis2_analytics_trigger.py --mode full --config dish.conf
 
 # Fire-and-forget (no polling)
-python dhis2_analytics_trigger.py --mode incremental --config dish.conf --no-watch
+python dhis2_analytics_trigger.py --mode continuous --config dish.conf --no-watch
 
 # Tune polling
-python dhis2_analytics_trigger.py --mode full --config dish.conf --poll-interval 30 --max-wait 21600
+python dhis2_analytics_trigger.py --mode full --config dish.conf --poll-interval 30 --max-wait 43200
 ```
 
 ## Setup
@@ -45,7 +45,8 @@ pip install -r requirements.txt
 - `DHISConfig`: `base_url`, `token`, `verify_ssl`, `timeout_seconds`; derives `analytics_endpoint` as `{base_url}/api/resourceTables/analytics`
 - `AlertingConfig`: `webhook_url`, `telegram` (dict with `bot_token`/`chat_id`), `only_on_failure`
 
-**Two analytics modes** defined as static param dicts:
+**Three analytics modes** defined as static param dicts:
+- `CONTINUOUS_PARAMS`: `lastYears=0`, `skipResourceTables=true`, `skipAggregate=true` — only recently changed tracker data; intended for high-frequency runs (e.g. every 2h)
 - `INCREMENTAL_PARAMS`: skips resource tables, `lastYears=1`
 - `FULL_PARAMS`: includes resource tables, no `lastYears` limit
 

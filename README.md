@@ -3,14 +3,15 @@
 A Python utility to trigger DHIS2 analytics via `POST` and (optionally)
 watch progress, log output, and send alerts (generic webhook + Telegram).
 
-Some installations of DHIS2 have reported issues running analytics with the
-built-in scheduler, so this script can be run from cron instead. The added advantage
-is that you can get notified of failures via Telegram or any webhook.
+The primary use case is **continuous analytics** on high-volume tracker systems
+where standard analytics runs are too slow. By using `lastYears=0`, only recently
+changed data is processed, allowing frequent short runs instead of one long nightly job.
 
 ## What it does
-- Triggers incremental or full analytics runs:
-  - Incremental: skips resource tables; `lastYears=1`
-  - Full: includes resource tables; `lastYears=5`
+- Triggers analytics runs in three modes:
+  - **Continuous**: `lastYears=0`, skips resource tables and aggregate tables — only recently changed tracker data. Use for high-frequency scheduling (e.g. every 2h).
+  - **Incremental**: skips resource tables; `lastYears=1`
+  - **Full**: includes resource tables; processes all years
 - Polls `/api/system/tasks/ANALYTICS_TABLE/<id>` until completion, then classifies the outcome.
 - Sends alerts:
   - **Webhook** (any JSON endpoint)
@@ -57,35 +58,36 @@ Create `/etc/dhis2_trigger.json`:
 If you want to use the Telegram alerts, create a bot with [BotFather](https://t.me/botfather)
 and get your chat ID with [@userinfobot](https://t.me/userinfobot). For group chats, add the 
 bot to the group and promote it to admin.
+
 ## Run
 ```bash
 # Dry run
-python dhis2_analytics_trigger.py --mode incremental --config /etc/dhis2_trigger.json --dry-run
+python dhis2_analytics_trigger.py --mode continuous --config /etc/dhis2_trigger.json --dry-run
 
-# Incremental
-python dhis2_analytics_trigger.py --mode incremental --config /etc/dhis2_trigger.json
+# Continuous analytics (recently changed data only)
+python dhis2_analytics_trigger.py --mode continuous --config /etc/dhis2_trigger.json
 
-# Full
+# Full analytics run
 python dhis2_analytics_trigger.py --mode full --config /etc/dhis2_trigger.json
 ```
 CLI flags: `--poll-interval`, `--max-wait`, `--no-watch`.
 
 ## Cron
 
-Below is an example `crontab -e` entry to run incremental analytics every 15 min
-during business hours (Mon–Fri, 08:00–17:59) and a full run daily at 01:00. Adjust
-the paths and parameters as needed.
+Recommended schedule for a high-volume tracker-only system:
+- Continuous analytics every 2 hours during the week
+- Full rebuild once a week (early Sunday morning)
 
 ```cron
 TZ=Africa/Nairobi
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# Incremental: every 15 min, 08:00–17:59, Mon–Fri
-*/15 8-17 * * 1-5 /usr/bin/flock -n /var/lock/dhis2-analytics.lock /opt/dhis2-analytics-trigger/.venv/bin/python /opt/dhis2-analytics-trigger/dhis2_analytics_trigger.py --mode incremental --config /etc/dhis2_trigger.json >> /var/log/dhis2_trigger.log 2>&1
+# Continuous: every 2h Mon–Sat (skip Sunday — full run that day)
+0 */2 * * 1-6 /usr/bin/flock -n /var/lock/dhis2-analytics.lock /opt/dhis2-analytics-trigger/.venv/bin/python /opt/dhis2-analytics-trigger/dhis2_analytics_trigger.py --mode continuous --config /etc/dhis2_trigger.json >> /var/log/dhis2_trigger.log 2>&1
 
-# Full: daily at 01:00 (allow up to 6h)
-0 1 * * * /usr/bin/flock -n /var/lock/dhis2-analytics.lock /opt/dhis2-analytics-trigger/.venv/bin/python /opt/dhis2-analytics-trigger/dhis2_analytics_trigger.py --mode full --max-wait 21600 --config /etc/dhis2_trigger.json >> /var/log/dhis2_trigger.log 2>&1
+# Full: weekly on Sunday at 01:00 (allow up to 12h)
+0 1 * * 0 /usr/bin/flock -n /var/lock/dhis2-analytics.lock /opt/dhis2-analytics-trigger/.venv/bin/python /opt/dhis2-analytics-trigger/dhis2_analytics_trigger.py --mode full --max-wait 43200 --config /etc/dhis2_trigger.json >> /var/log/dhis2_trigger.log 2>&1
 ```
 
 ## How success/failure is detected
@@ -96,7 +98,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ## Troubleshooting
 - **Auth**: uses `Authorization: ApiToken <token>`. For Basic auth, set `DHIS2_USERNAME` / `DHIS2_PASSWORD` env vars. Note that the use of Basic Authentication is discouraged.
 - **SSL**: set `verify_ssl:false` temporarily to diagnose CA issues (fix CA properly for prod).
-- **Overlaps**: `flock` prevents incremental/full collisions.
+- **Overlaps**: `flock` prevents concurrent runs.
 - **Logs**: `/var/log/dhis2_trigger.log`; set up logrotate if needed.
 
 ---

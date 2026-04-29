@@ -74,6 +74,15 @@ class AppConfig:
     alerting: AlertingConfig
 
 
+# Continuous analytics: only processes recently changed data (lastYears=0).
+# Use for high-frequency runs (e.g. every 2h) on tracker-only systems.
+CONTINUOUS_PARAMS = {
+    "skipResourceTables": "true",
+    "skipAggregate": "true",
+    "lastYears": "0",
+}
+
+# Incremental: processes the last year of data. Less precise than continuous.
 INCREMENTAL_PARAMS = {
     "skipResourceTables": "true",
     "skipOrgUnitOwnership": "true",
@@ -147,9 +156,14 @@ def post_analytics(
     username: Optional[str] = None,
     password: Optional[str] = None,
 ) -> requests.Response:
-    assert mode in ("incremental", "full"), "mode must be 'incremental' or 'full'"
+    assert mode in ("continuous", "incremental", "full"), "mode must be 'continuous', 'incremental', or 'full'"
 
-    params = INCREMENTAL_PARAMS if mode == "incremental" else FULL_PARAMS
+    if mode == "continuous":
+        params = CONTINUOUS_PARAMS
+    elif mode == "incremental":
+        params = INCREMENTAL_PARAMS
+    else:
+        params = FULL_PARAMS
     url = cfg.analytics_endpoint
     headers = build_headers(cfg)
 
@@ -386,9 +400,10 @@ def main() -> int:
     parser.add_argument("--config", required=True, help="Path to JSON config file")
     parser.add_argument(
         "--mode",
-        choices=["incremental", "full"],
+        choices=["continuous", "incremental", "full"],
         required=True,
-        help="Which analytics run to trigger",
+        help="continuous: only recently changed data (lastYears=0, skipAggregate); "
+             "incremental: last year of data; full: complete rebuild including resource tables",
     )
     parser.add_argument(
         "--dry-run",
