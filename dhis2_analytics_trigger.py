@@ -166,17 +166,10 @@ def post_analytics(
     session: requests.Session,
     cfg: DHISConfig,
     mode: str,
+    params: Dict[str, str],
     username: Optional[str] = None,
     password: Optional[str] = None,
 ) -> requests.Response:
-    assert mode in ("continuous", "incremental", "full"), "mode must be 'continuous', 'incremental', or 'full'"
-
-    if mode == "continuous":
-        params = CONTINUOUS_PARAMS
-    elif mode == "incremental":
-        params = INCREMENTAL_PARAMS
-    else:
-        params = FULL_PARAMS
     url = cfg.analytics_endpoint
     headers = build_headers(cfg)
 
