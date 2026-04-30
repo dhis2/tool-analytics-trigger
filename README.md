@@ -85,7 +85,7 @@ CLI flags: `--poll-interval`, `--max-wait`, `--no-watch`.
 ## Cron
 
 Recommended schedule for a high-volume tracker-only system:
-- Continuous analytics every 2 hours during the week
+- Continuous analytics every 2 hours during business hours (07:00–17:00), Mon–Sat
 - Full rebuild once a week (early Sunday morning)
 
 ```cron
@@ -93,8 +93,8 @@ TZ=Africa/Nairobi
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# Continuous: every 2h Mon–Sat (skip Sunday — full run that day)
-0 */2 * * 1-6 /usr/bin/flock -n /var/lock/dhis2-analytics.lock /opt/tool-analytics-trigger/.venv/bin/python /opt/tool-analytics-trigger/dhis2_analytics_trigger.py --mode continuous --config /opt/tool-analytics-trigger/config.json >> /var/log/dhis2_trigger.log 2>&1
+# Continuous: every 2h during business hours (07:00–17:00), Mon–Sat
+0 7-18/2 * * 1-6 /usr/bin/flock -n /var/lock/dhis2-analytics.lock /opt/tool-analytics-trigger/.venv/bin/python /opt/tool-analytics-trigger/dhis2_analytics_trigger.py --mode continuous --config /opt/tool-analytics-trigger/config.json >> /var/log/dhis2_trigger.log 2>&1
 
 # Full: weekly on Sunday at 01:00 (allow up to 12h)
 0 1 * * 0 /usr/bin/flock -n /var/lock/dhis2-analytics.lock /opt/tool-analytics-trigger/.venv/bin/python /opt/tool-analytics-trigger/dhis2_analytics_trigger.py --mode full --max-wait 43200 --config /opt/tool-analytics-trigger/config.json >> /var/log/dhis2_trigger.log 2>&1
