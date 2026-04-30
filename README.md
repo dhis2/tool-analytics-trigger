@@ -23,9 +23,10 @@ changed data is processed, allowing frequent short runs instead of one long nigh
 - `telegram_alerts.py` – Telegram helper
 - `requirements.txt`
 
-## Install (venv recommended)
+## Install
 ```bash
-sudo mkdir -p /opt/dhis2-analytics-trigger && cd /opt/dhis2-analytics-trigger
+sudo mkdir -p /opt/tool-analytics-trigger
+cd /opt/tool-analytics-trigger
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
@@ -33,11 +34,20 @@ pip install -r requirements.txt
 ```
 
 ## Configure
-Create `/etc/dhis2_trigger.json`:
+
+Keep your config in `/opt/tool-analytics-trigger/config.json` alongside the script.
+Copy `config.json.sample` as a starting point:
+
+```bash
+cp config.json.sample /opt/tool-analytics-trigger/config.json
+```
+
+Then edit it:
+
 ```json
 {
   "dhis": {
-    "base_url": "https://play.im.dhis2.org/stable-2-42-1",
+    "base_url": "https://your-dhis2-instance/",
     "token": "<PASTE_TOKEN>",
     "verify_ssl": true,
     "timeout_seconds": 60
@@ -52,23 +62,23 @@ Create `/etc/dhis2_trigger.json`:
   }
 }
 ```
+
 > For local/dev DHIS2 use e.g. `http://localhost:8080` as `base_url`.
 
-
 If you want to use the Telegram alerts, create a bot with [BotFather](https://t.me/botfather)
-and get your chat ID with [@userinfobot](https://t.me/userinfobot). For group chats, add the 
+and get your chat ID with [@userinfobot](https://t.me/userinfobot). For group chats, add the
 bot to the group and promote it to admin.
 
 ## Run
 ```bash
 # Dry run
-python dhis2_analytics_trigger.py --mode continuous --config /etc/dhis2_trigger.json --dry-run
+/opt/tool-analytics-trigger/.venv/bin/python dhis2_analytics_trigger.py --mode continuous --config /opt/tool-analytics-trigger/config.json --dry-run
 
 # Continuous analytics (recently changed data only)
-python dhis2_analytics_trigger.py --mode continuous --config /etc/dhis2_trigger.json
+/opt/tool-analytics-trigger/.venv/bin/python dhis2_analytics_trigger.py --mode continuous --config /opt/tool-analytics-trigger/config.json
 
 # Full analytics run
-python dhis2_analytics_trigger.py --mode full --config /etc/dhis2_trigger.json
+/opt/tool-analytics-trigger/.venv/bin/python dhis2_analytics_trigger.py --mode full --config /opt/tool-analytics-trigger/config.json
 ```
 CLI flags: `--poll-interval`, `--max-wait`, `--no-watch`.
 
@@ -84,10 +94,10 @@ SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Continuous: every 2h Mon–Sat (skip Sunday — full run that day)
-0 */2 * * 1-6 /usr/bin/flock -n /var/lock/dhis2-analytics.lock /opt/dhis2-analytics-trigger/.venv/bin/python /opt/dhis2-analytics-trigger/dhis2_analytics_trigger.py --mode continuous --config /etc/dhis2_trigger.json >> /var/log/dhis2_trigger.log 2>&1
+0 */2 * * 1-6 /usr/bin/flock -n /var/lock/dhis2-analytics.lock /opt/tool-analytics-trigger/.venv/bin/python /opt/tool-analytics-trigger/dhis2_analytics_trigger.py --mode continuous --config /opt/tool-analytics-trigger/config.json >> /var/log/dhis2_trigger.log 2>&1
 
 # Full: weekly on Sunday at 01:00 (allow up to 12h)
-0 1 * * 0 /usr/bin/flock -n /var/lock/dhis2-analytics.lock /opt/dhis2-analytics-trigger/.venv/bin/python /opt/dhis2-analytics-trigger/dhis2_analytics_trigger.py --mode full --max-wait 43200 --config /etc/dhis2_trigger.json >> /var/log/dhis2_trigger.log 2>&1
+0 1 * * 0 /usr/bin/flock -n /var/lock/dhis2-analytics.lock /opt/tool-analytics-trigger/.venv/bin/python /opt/tool-analytics-trigger/dhis2_analytics_trigger.py --mode full --max-wait 43200 --config /opt/tool-analytics-trigger/config.json >> /var/log/dhis2_trigger.log 2>&1
 ```
 
 ## How success/failure is detected
