@@ -6,13 +6,13 @@ A small utility to trigger DHIS2 analytics via POST requests, with simple
 retry logic, logging, and optional alerting.
 
 Usage examples:
-  python dhis2_analytics_trigger.py --mode incremental --config /etc/dhis2_trigger.json
+  python dhis2_analytics_trigger.py --mode continuous --config /etc/dhis2_trigger.json
   python dhis2_analytics_trigger.py --mode full --config /etc/dhis2_trigger.json
 
-Sample /etc/dhis2_trigger.json:
+Sample /etc/dhis2_trigger.json (see config.json.sample for full reference):
 {
   "dhis": {
-    "base_url": "https://mm.dhis2.net/hmis",  # Root incl. scheme and context path
+    "base_url": "https://mm.dhis2.net/hmis",
     "token": "<PASTE_YOUR_TOKEN>",
     "verify_ssl": true,
     "timeout_seconds": 60
