@@ -75,8 +75,6 @@ class AppConfig:
     modes: Dict[str, Dict[str, str]] = field(default_factory=dict)
 
 
-
-
 def load_config(path: str) -> AppConfig:
     with open(path, "r", encoding="utf-8") as f:
         raw = json.load(f)
