@@ -75,29 +75,6 @@ class AppConfig:
     modes: Dict[str, Dict[str, str]] = field(default_factory=dict)
 
 
-# Continuous analytics: only processes recently changed data (lastYears=0).
-# Use for high-frequency runs (e.g. every 2h) on tracker-only systems.
-CONTINUOUS_PARAMS = {
-    "skipResourceTables": "true",
-    "skipAggregate": "true",
-    "lastYears": "0",
-}
-
-# Incremental: processes the last year of data. Less precise than continuous.
-INCREMENTAL_PARAMS = {
-    "skipResourceTables": "true",
-    "skipOrgUnitOwnership": "true",
-    "skipTrackedEntities": "true",
-    "skipOutliers": "true",
-    "lastYears": "1",
-}
-
-FULL_PARAMS = {
-    "skipResourceTables": "false",
-    "skipOrgUnitOwnership": "false",
-    "skipTrackedEntities": "false",
-    "skipOutliers": "true"
-}
 
 
 def load_config(path: str) -> AppConfig:
@@ -119,19 +96,14 @@ def load_config(path: str) -> AppConfig:
         only_on_failure=bool(alert_raw.get("only_on_failure", True)),
     )
 
-    _defaults = {
-        "continuous": CONTINUOUS_PARAMS,
-        "incremental": INCREMENTAL_PARAMS,
-        "full": FULL_PARAMS,
-    }
     modes_raw = raw.get("modes", {})
-    modes: Dict[str, Dict[str, str]] = {}
-    for name, defaults in _defaults.items():
-        overrides = {
+    modes: Dict[str, Dict[str, str]] = {
+        name: {
             k: str(v).lower() if isinstance(v, bool) else str(v)
-            for k, v in modes_raw.get(name, {}).items()
+            for k, v in params.items()
         }
-        modes[name] = {**defaults, **overrides}
+        for name, params in modes_raw.items()
+    }
 
     return AppConfig(dhis=dhis_cfg, alerting=alert_cfg, modes=modes)
 
