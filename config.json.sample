@@ -15,10 +15,19 @@
   },
   "modes": {
     "continuous": {
+      "skipResourceTables": "true",
+      "skipAggregate": "true",
       "lastYears": "0"
     },
+    "incremental": {
+      "skipResourceTables": "true",
+      "skipOrgUnitOwnership": "true",
+      "skipTrackedEntities": "true",
+      "skipOutliers": "true",
+      "lastYears": "1"
+    },
     "full": {
-      "skipOutliers": "false"
+      "skipOutliers": "true"
     }
   }
 }
