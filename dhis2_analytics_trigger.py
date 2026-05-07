@@ -96,7 +96,7 @@ def load_config(path: str) -> AppConfig:
         only_on_failure=bool(alert_raw.get("only_on_failure", True)),
     )
 
-    modes_raw = raw.get("modes", {})
+    modes_raw = raw.get("modes") or {}
     modes: Dict[str, Dict[str, str]] = {
         name: {
             k: str(v).lower() if isinstance(v, bool) else str(v)
