@@ -1,11 +1,11 @@
 import json
 import os
+import sys
 import pytest
 
-import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from dhis2_analytics_trigger import load_config, CONTINUOUS_PARAMS, INCREMENTAL_PARAMS, FULL_PARAMS
+from dhis2_analytics_trigger import load_config
 
 
 def _write_config(tmp_path, data: dict) -> str:
@@ -23,24 +23,22 @@ BASE_CONFIG = {
 }
 
 
-def test_modes_defaults_when_no_modes_in_config(tmp_path):
-    cfg = load_config(_write_config(tmp_path, BASE_CONFIG))
-    assert cfg.modes["continuous"] == CONTINUOUS_PARAMS
-    assert cfg.modes["incremental"] == INCREMENTAL_PARAMS
-    assert cfg.modes["full"] == FULL_PARAMS
-
-
-def test_modes_override_merges_over_defaults(tmp_path):
-    data = {**BASE_CONFIG, "modes": {"continuous": {"lastYears": "2"}}}
+def test_modes_loaded_directly_from_config(tmp_path):
+    data = {**BASE_CONFIG, "modes": {
+        "continuous": {"skipResourceTables": "true", "lastYears": "0"},
+        "full": {"skipOutliers": "true"},
+    }}
     cfg = load_config(_write_config(tmp_path, data))
-    assert cfg.modes["continuous"]["lastYears"] == "2"
-    assert cfg.modes["continuous"]["skipResourceTables"] == "true"
-    assert cfg.modes["continuous"]["skipAggregate"] == "true"
+    assert cfg.modes["continuous"] == {"skipResourceTables": "true", "lastYears": "0"}
+    assert cfg.modes["full"] == {"skipOutliers": "true"}
+
+
+def test_no_modes_in_config_gives_empty_dict(tmp_path):
+    cfg = load_config(_write_config(tmp_path, BASE_CONFIG))
+    assert cfg.modes == {}
 
 
 def test_modes_json_bool_coerced_to_lowercase_str(tmp_path):
-    # JSON booleans (Python True/False) must become "true"/"false", not "True"/"False",
-    # because the DHIS2 API requires lowercase.
     data = {**BASE_CONFIG, "modes": {"full": {"skipResourceTables": True, "skipOutliers": False}}}
     cfg = load_config(_write_config(tmp_path, data))
     assert cfg.modes["full"]["skipResourceTables"] == "true"
@@ -48,8 +46,9 @@ def test_modes_json_bool_coerced_to_lowercase_str(tmp_path):
     assert isinstance(cfg.modes["full"]["skipResourceTables"], str)
 
 
-def test_modes_unspecified_modes_still_have_defaults(tmp_path):
-    data = {**BASE_CONFIG, "modes": {"continuous": {"lastYears": "3"}}}
+def test_custom_mode_name_loaded(tmp_path):
+    data = {**BASE_CONFIG, "modes": {"enrollments": {"skipAggregate": "true", "skipEvents": "true"}}}
     cfg = load_config(_write_config(tmp_path, data))
-    assert cfg.modes["incremental"] == INCREMENTAL_PARAMS
-    assert cfg.modes["full"] == FULL_PARAMS
+    assert "enrollments" in cfg.modes
+    assert cfg.modes["enrollments"]["skipAggregate"] == "true"
+    assert cfg.modes["enrollments"]["skipEvents"] == "true"
