@@ -45,12 +45,7 @@ pip install -r requirements.txt
 - `DHISConfig`: `base_url`, `token`, `verify_ssl`, `timeout_seconds`; derives `analytics_endpoint` as `{base_url}/api/resourceTables/analytics`
 - `AlertingConfig`: `webhook_url`, `telegram` (dict with `bot_token`/`chat_id`), `only_on_failure`
 
-**Three analytics modes** defined as static param dicts:
-- `CONTINUOUS_PARAMS`: `lastYears=0`, `skipResourceTables=true`, `skipAggregate=true` — only recently changed tracker data; intended for high-frequency runs (e.g. every 2h)
-- `INCREMENTAL_PARAMS`: skips resource tables, `lastYears=1`
-- `FULL_PARAMS`: includes resource tables, no `lastYears` limit
-
-Mode params can be overridden per-mode in the config under a `modes` key; config values are merged over the hardcoded defaults (config wins, unspecified keys retain defaults, JSON booleans coerced to lowercase strings).
+**Analytics modes** are defined entirely in the config file under a `modes` key. Each mode is a free-form dict of DHIS2 analytics query params. Any string is accepted as `--mode`; the script validates the mode exists in the loaded config and exits with a clear error listing available modes if not. JSON booleans are coerced to lowercase strings. Params not listed in a mode are omitted from the POST — DHIS2 applies its own defaults (`false` / no `lastYears` limit). The `config.json.sample` documents three common modes (`continuous`, `incremental`, `full`) as a starting point.
 
 **Task polling** (`poll_task_logs()`): polls the `relativeNotifierEndpoint` returned in the trigger response. Deduplicates events by `uid`. Starts a grace window (`grace_seconds_after_complete`, default 10s) once a `completed:true` event is seen, then classifies outcome:
 - **Success**: any `completed:true` INFO event whose message contains `"analytics tables updated"` (case-insensitive)
