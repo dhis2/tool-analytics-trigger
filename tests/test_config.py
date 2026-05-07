@@ -39,6 +39,8 @@ def test_no_modes_in_config_gives_empty_dict(tmp_path):
 
 
 def test_modes_json_bool_coerced_to_lowercase_str(tmp_path):
+    # JSON booleans (Python True/False) must become "true"/"false", not "True"/"False",
+    # because the DHIS2 API requires lowercase.
     data = {**BASE_CONFIG, "modes": {"full": {"skipResourceTables": True, "skipOutliers": False}}}
     cfg = load_config(_write_config(tmp_path, data))
     assert cfg.modes["full"]["skipResourceTables"] == "true"
