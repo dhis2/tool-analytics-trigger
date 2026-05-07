@@ -379,10 +379,8 @@ def main() -> int:
     parser.add_argument("--config", required=True, help="Path to JSON config file")
     parser.add_argument(
         "--mode",
-        choices=["continuous", "incremental", "full"],
         required=True,
-        help="continuous: only recently changed data (lastYears=0, skipAggregate); "
-             "incremental: last year of data; full: complete rebuild including resource tables",
+        help="Mode name as defined in the config file's 'modes' block (e.g. continuous, full, incremental)",
     )
     parser.add_argument(
         "--dry-run",
@@ -425,8 +423,14 @@ def main() -> int:
 
     cfg = load_config(args.config)
 
+    if args.mode not in cfg.modes:
+        available = ", ".join(sorted(cfg.modes)) if cfg.modes else "(none defined — add a 'modes' block to your config)"
+        print(f"error: mode {args.mode!r} not found in config. Available modes: {available}", file=sys.stderr)
+        return 2
+
     if args.dry_run:
-        logging.info("[DRY-RUN] Would POST to %s with mode=%s", cfg.dhis.analytics_endpoint, args.mode)
+        params = cfg.modes[args.mode]
+        logging.info("[DRY-RUN] Would POST to %s with mode=%s params=%s", cfg.dhis.analytics_endpoint, args.mode, params)
         return 0
 
     session = make_session()
