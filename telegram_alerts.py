@@ -88,6 +88,22 @@ def format_success_summary(
         lines.append(f"endpoint: <code>{endpoint}</code>")
     return "\n".join(lines)
 
+def format_token_expiry_warning(
+    *, expiring_tokens: list[dict], endpoint: str | None = None
+) -> str:
+    """Format an HTML warning message listing API tokens that expire soon."""
+    lines = ["<b>⚠️ DHIS2 API token expiring soon</b>", ""]
+    for tok in expiring_tokens:
+        token_id = tok.get("id") or tok.get("code") or "unknown"
+        expire = tok["expire"]
+        days = tok["days_remaining"]
+        lines.append(f"<code>{token_id}</code> expires <b>{expire}</b> ({days} day{'s' if days != 1 else ''})")
+    if endpoint:
+        lines.append("")
+        lines.append(f"endpoint: <code>{endpoint}</code>")
+    return "\n".join(lines)
+
+
 def format_failure_summary(
     *,
     mode: str,

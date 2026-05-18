@@ -38,13 +38,19 @@ import os
 import sys
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from telegram_alerts import send_telegram_alert, format_failure_summary, format_success_summary
+from telegram_alerts import (
+    send_telegram_alert,
+    format_failure_summary,
+    format_success_summary,
+    format_token_expiry_warning,
+)
 
 
 
@@ -150,6 +156,90 @@ def build_headers(cfg: DHISConfig) -> Dict[str, str]:
     else:
         logging.debug("Using Basic Auth via requests.auth if username/password provided.")
     return headers
+
+
+def check_token_expiry(
+    session: requests.Session,
+    cfg: DHISConfig,
+    alerting: AlertingConfig,
+    warn_days: int = 7,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
+) -> None:
+    """Check if any of the authenticated user's API tokens expire soon.
+
+    Non-blocking: any failure is logged at DEBUG and silently ignored.
+    """
+    try:
+        headers = build_headers(cfg)
+        auth = None
+        if not cfg.token and username and password:
+            auth = requests.auth.HTTPBasicAuth(username, password)
+
+        # Get current user ID
+        me_url = f"{cfg.base_url.rstrip('/')}/api/me?fields=id"
+        me_resp = session.get(me_url, headers=headers, auth=auth,
+                              timeout=cfg.timeout_seconds, verify=cfg.verify_ssl)
+        if me_resp.status_code >= 400:
+            logging.debug("Token expiry check skipped: /api/me returned %s", me_resp.status_code)
+            return
+        user_id = me_resp.json().get("id")
+        if not user_id:
+            logging.debug("Token expiry check skipped: no user id in /api/me response")
+            return
+
+        # Fetch tokens created by this user
+        token_url = (
+            f"{cfg.base_url.rstrip('/')}/api/apiToken"
+            f"?fields=id,expire&paging=false"
+            f"&filter=createdBy.id:eq:{user_id}"
+        )
+        tok_resp = session.get(token_url, headers=headers, auth=auth,
+                               timeout=cfg.timeout_seconds, verify=cfg.verify_ssl)
+        if tok_resp.status_code >= 400:
+            logging.debug("Token expiry check skipped: /api/apiToken returned %s", tok_resp.status_code)
+            return
+
+        tokens = tok_resp.json().get("apiToken", [])
+        now = datetime.now(timezone.utc)
+        threshold = now + timedelta(days=warn_days)
+        expiring = []
+
+        for tok in tokens:
+            expire_raw = tok.get("expire")
+            if not expire_raw:
+                continue  # perpetual token
+            # DHIS2 returns expire as epoch milliseconds
+            expire_dt = datetime.fromtimestamp(expire_raw / 1000, tz=timezone.utc)
+            if expire_dt <= threshold:
+                days_remaining = max(0, (expire_dt - now).days)
+                expire_date_str = expire_dt.strftime("%Y-%m-%d")
+                expiring.append({
+                    "id": tok.get("id"),
+                    "expire": expire_date_str,
+                    "days_remaining": days_remaining,
+                })
+
+        if not expiring:
+            logging.debug("Token expiry check: no tokens expiring within %d days", warn_days)
+            return
+
+        for tok in expiring:
+            logging.warning(
+                "API token %s expires %s (%d days remaining)",
+                tok["id"], tok["expire"], tok["days_remaining"],
+            )
+
+        tg = alerting.telegram
+        if tg:
+            text = format_token_expiry_warning(
+                expiring_tokens=expiring,
+                endpoint=cfg.base_url,
+            )
+            send_telegram_alert(tg.get("bot_token"), tg.get("chat_id"), text)
+
+    except Exception as e:
+        logging.debug("Token expiry check skipped: %s", e)
 
 
 def post_analytics(
@@ -455,6 +545,9 @@ def main() -> int:
 
     username = os.getenv("DHIS2_USERNAME")
     password = os.getenv("DHIS2_PASSWORD")
+
+    if cfg.dhis.token:
+        check_token_expiry(session, cfg.dhis, cfg.alerting, username=username, password=password)
 
     t0 = time.time()
     try:
