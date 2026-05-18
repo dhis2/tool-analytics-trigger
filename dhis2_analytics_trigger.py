@@ -95,6 +95,26 @@ def load_config(path: str) -> AppConfig:
     )
 
     modes_raw = raw.get("modes") or {}
+    if not modes_raw:
+        logging.warning("No 'modes' block in config — using built-in defaults. "
+                        "Consider adding a 'modes' block (see config.json.sample).")
+        modes_raw = {
+            "continuous": {
+                "skipResourceTables": "true",
+                "skipAggregate": "true",
+                "lastYears": "0",
+            },
+            "incremental": {
+                "skipResourceTables": "true",
+                "skipOrgUnitOwnership": "true",
+                "skipTrackedEntities": "true",
+                "skipOutliers": "true",
+                "lastYears": "1",
+            },
+            "full": {
+                "skipOutliers": "true",
+            },
+        }
     modes: Dict[str, Dict[str, str]] = {
         name: {
             k: str(v).lower() if isinstance(v, bool) else str(v)

@@ -8,10 +8,12 @@ where standard analytics runs are too slow. By using `lastYears=0`, only recentl
 changed data is processed, allowing frequent short runs instead of one long nightly job.
 
 ## What it does
-- Triggers analytics runs in three modes:
+- Triggers analytics runs using **modes defined in your config file**. Each mode is a
+  set of DHIS2 analytics query parameters. Three common modes ship in `config.json.sample`:
   - **Continuous**: `lastYears=0`, skips resource tables and aggregate tables — only recently changed tracker data. Use for high-frequency scheduling (e.g. every 2h).
   - **Incremental**: skips resource tables; `lastYears=1`
   - **Full**: includes resource tables; processes all years
+  You can rename these, add your own, or remove ones you don't need.
 - Polls `/api/system/tasks/ANALYTICS_TABLE/<id>` until completion, then classifies the outcome.
 - Sends alerts:
   - **Webhook** (any JSON endpoint)
@@ -59,6 +61,23 @@ Then edit it:
       "bot_token": "123456:ABCDEF...",
       "chat_id": "-1001234567890"
     }
+  },
+  "modes": {
+    "continuous": {
+      "skipResourceTables": "true",
+      "skipAggregate": "true",
+      "lastYears": "0"
+    },
+    "incremental": {
+      "skipResourceTables": "true",
+      "skipOrgUnitOwnership": "true",
+      "skipTrackedEntities": "true",
+      "skipOutliers": "true",
+      "lastYears": "1"
+    },
+    "full": {
+      "skipOutliers": "true"
+    }
   }
 }
 ```
@@ -68,6 +87,14 @@ Then edit it:
 If you want to use the Telegram alerts, create a bot with [BotFather](https://t.me/botfather)
 and get your chat ID with [@userinfobot](https://t.me/userinfobot). For group chats, add the
 bot to the group and promote it to admin.
+
+## Upgrading from older versions
+
+If you are upgrading from a version that had hardcoded modes, existing configs without
+a `modes` block will still work — the script falls back to built-in defaults for
+`continuous`, `incremental`, and `full`. However, adding an explicit `modes` block to
+your config is recommended so you can customise parameters. Copy the `modes` section
+from `config.json.sample` into your config, or see the example above.
 
 ## Run
 ```bash
@@ -112,4 +139,4 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 - **Logs**: `/var/log/dhis2_trigger.log`; set up logrotate if needed.
 
 ---
-Tweak `lastYears` in the params if your DHIS2 needs a different window.
+Tweak `lastYears` and other parameters in the `modes` block of your config file to match your DHIS2 instance's needs.
